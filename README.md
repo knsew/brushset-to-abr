@@ -3,7 +3,7 @@
 把 **Procreate `.brushset` 笔刷包转换成 Photoshop `.abr`** 的 Windows 桌面工具（WPF / .NET 9，零第三方依赖）。
 A Windows desktop tool that converts **Procreate `.brushset` brush packs into Photoshop `.abr`** brushes (WPF / .NET 9, zero third-party dependencies).
 
-> 作者 · Author：小红书 **@此恨绵绵无绝期**
+> 作者 · Author：小红书 [**@此恨绵绵无绝期**](https://www.xiaohongshu.com/user/profile/6325ecba000000002302721a)
 > 本软件完全免费，欢迎自由分享与转载，但请勿用于任何商业用途。
 > This software is completely free. Feel free to share, but **no commercial use**.
 > 许可证 · License：CC BY-NC-SA 4.0（见 [LICENSE](LICENSE)）
@@ -36,8 +36,8 @@ If you're interested in this direction, you're very welcome to **build on it**. 
 
 ## 📥 获取成品 exe · Download
 
-**GitHub 仓库只放源码。** 成品 exe 请到作者**小红书主页**获取与关注更新（每次发布/更新都会在那里通知）。也可自行构建（见下）。
-**This GitHub repo contains source code only.** Get the ready-to-use exe from the author's **Xiaohongshu (RedNote) page**, where releases and updates are announced. You can also build it yourself (see below).
+**GitHub 仓库只放源码。** 成品 exe 请到作者 [**小红书主页**](https://www.xiaohongshu.com/user/profile/6325ecba000000002302721a)（@此恨绵绵无绝期）获取与关注更新（每次发布/更新都会在那里通知）。也可自行构建（见下）。
+**This GitHub repo contains source code only.** Get the ready-to-use exe from the author's [**Xiaohongshu (RedNote) page**](https://www.xiaohongshu.com/user/profile/6325ecba000000002302721a) (@此恨绵绵无绝期), where releases and updates are announced. You can also build it yourself (see below).
 
 ## ✨ 功能 · Features
 
