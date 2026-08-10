@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    BrushsetToABR / PNGtoABR — WPF (.NET) 全面重构版
+    零第三方依赖：仅用 WPF 纯原生控件 + XAML；核心转换引擎（Core/Mapping/Models/RenderSim/
+    PatternLibrary/PatternData/BrushLibrary）原样链接复用，不做任何业务改动。
+    System.Drawing 由 WindowsDesktop 框架提供（非 NuGet 包），满足零依赖要求。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- 核心引擎文件引用了 System.Windows.Forms（仅 using，未用类型），
+         同时复用 System.Drawing；两者均属 WindowsDesktop 框架，非第三方依赖。 -->
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <RootNamespace>BrushStudio</RootNamespace>
+    <AssemblyName>PNGtoABR</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <Version>3.0.0</Version>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <FileVersion>3.0.0.0</FileVersion>
+
+    <!-- 独立单文件发布：dotnet publish -c Release 即产出单个自包含 .exe -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <!-- 核心转换引擎（黑盒，保持原样） -->
+  <ItemGroup>
+    <Compile Include="..\Core.cs" Link="Engine\Core.cs" />
+    <Compile Include="..\Mapping.cs" Link="Engine\Mapping.cs" />
+    <Compile Include="..\Models.cs" Link="Engine\Models.cs" />
+    <Compile Include="..\RenderSim.cs" Link="Engine\RenderSim.cs" />
+    <Compile Include="..\PatternLibrary.cs" Link="Engine\PatternLibrary.cs" />
+    <Compile Include="..\PatternData.cs" Link="Engine\PatternData.cs" />
+    <Compile Include="..\BrushLibrary.cs" Link="Engine\BrushLibrary.cs" />
+  </ItemGroup>
+
+  <!-- Procreate 内置材质库（256px 缩略版，用于解析 bundledShapePath/GrainPath 引用）。
+       开源版不包含该素材（Procreate 版权），本机构建若存在则嵌入，仓库克隆缺失时自动跳过。 -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\materials.zip" Condition="Exists('Resources\materials.zip')" />
+  </ItemGroup>
+
+</Project>

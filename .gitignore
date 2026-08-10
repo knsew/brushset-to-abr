@@ -1,0 +1,65 @@
+# ===== 构建产物 =====
+bin/
+obj/
+dist/
+*.user
+
+# ===== 发布/运行产物 =====
+*.exe
+*.dll
+*.pdb
+
+# ===== 诊断与实验目录（不进仓库） =====
+_diag/
+_diag1/
+_texture_test/
+_cal/
+_psb/
+_r1/
+_r2/
+_r3/
+_rc/
+_sx/
+_sxc/
+_sxc2/
+_sxd/
+wpf-verify/
+
+# ===== 测试资产（含用户/第三方版权笔刷） =====
+FidelityTest/
+FidelityTest$dir/
+brush/
+*.abr
+*.brushset
+*.pat
+
+# ===== 备份文件 =====
+*.bak-*.cs
+*.bak-*.txt
+*.bak-*.md
+
+# ===== 内嵌版权素材（Procreate 素材，不进仓库） =====
+BrushStudioWpf/Resources/materials.zip
+BrushStudioWpf/materials/
+
+# ===== 内部文档（交接/产品规划，不公开） =====
+HANDOFF.md
+PRD.md
+ROADMAP.md
+
+# ===== 旧 WinForms 版源码（已被 WPF 版取代，仅引擎文件保留在根） =====
+Program.cs
+MainForm.cs
+Tokens.cs
+Controls.cs
+Modern.cs
+build.ps1
+/app.ico
+/app.manifest
+
+# ===== 截图 / 杂项 =====
+ui-layout-shot.png
+ui-layout-empty.png
+界面预览.png
+wpf-btn-check.png
+_bottom_btn.png

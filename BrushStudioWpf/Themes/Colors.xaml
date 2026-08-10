@@ -1,0 +1,90 @@
+<!-- Acubi Style 设计 token（韩系极简微甜）。
+     主背景暖灰奶白 #F4F4F6；卡片纯白 + 1px 极细边框 #E3E3E8；
+     主色烟熏灰粉 #B88691；次按钮浅灰 #ECECEF（hover #E2E2E7）；
+     主文字高级炭灰 #2C2C30，辅助文字 #8E8E96；圆角 6~8px。 -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ===== 底色 ===== -->
+    <SolidColorBrush x:Key="BgBrush" Color="#E9E9EC" />              <!-- 窗口背景（低饱和暖灰奶白） -->
+    <SolidColorBrush x:Key="BgBrushAlt" Color="#E2E2E6" />           <!-- 次级底（更深的灰） -->
+
+    <!-- ===== 卡片 / 描边 ===== -->
+    <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />            <!-- 卡片（纯白） -->
+    <SolidColorBrush x:Key="CardAltBrush" Color="#FAFAFB" />         <!-- 卡片次级底色 -->
+    <SolidColorBrush x:Key="BorderBrush" Color="#E3E3E8" />          <!-- 1px 极细描边 -->
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#C9C9D0" />    <!-- 强调描边 -->
+
+    <!-- ===== 文字 ===== -->
+    <SolidColorBrush x:Key="TextBrush" Color="#2C2C30" />            <!-- 主文字（高级炭灰） -->
+    <SolidColorBrush x:Key="TextStrongBrush" Color="#2C2C30" />      <!-- 标题（炭灰） -->
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B6B72" />   <!-- 字段标签（中灰） -->
+    <SolidColorBrush x:Key="MutedBrush" Color="#8E8E96" />           <!-- 辅助提示文字 -->
+    <SolidColorBrush x:Key="FaintBrush" Color="#B4B4BC" />           <!-- 占位/弱文字 -->
+
+    <!-- ===== 主色调（Acubi 烟熏灰粉） ===== -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#B88691" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#C79AA4" />
+    <SolidColorBrush x:Key="AccentDownBrush" Color="#A5717C" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#F6EAED" />      <!-- 主色浅底（选中/悬停） -->
+
+    <!-- ===== 笔刷缩略图衬底（浅灰，让白/黑笔刷轮廓都清晰） ===== -->
+    <SolidColorBrush x:Key="ThumbHostBrush" Color="#ECECEF" />
+
+    <!-- ===== 语义色（莫兰迪低饱和） ===== -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#6FA878" />
+    <SolidColorBrush x:Key="SuccessSoftBrush" Color="#EAF3EC" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#C9A26B" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#C07777" />
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#F7EBEB" />
+
+    <!-- ===== 主按钮（暖粉 #EFE4E9 浅底 + 炭灰字） ===== -->
+    <SolidColorBrush x:Key="BtnPrimaryBrush" Color="#EFE4E9" />
+    <SolidColorBrush x:Key="BtnPrimaryHoverBrush" Color="#E6D7DE" />
+    <SolidColorBrush x:Key="BtnPrimaryDownBrush" Color="#DCCBD4" />
+
+    <!-- ===== 次按钮（浅灰） ===== -->
+    <SolidColorBrush x:Key="BtnSecondaryBrush" Color="#ECECEF" />
+    <SolidColorBrush x:Key="BtnSecondaryHoverBrush" Color="#E2E2E7" />
+    <SolidColorBrush x:Key="BtnSecondaryDownBrush" Color="#DADADF" />
+
+    <!-- ===== 透明棋盘（中性灰） ===== -->
+    <SolidColorBrush x:Key="CheckerABrush" Color="#DCDCE2" />
+    <SolidColorBrush x:Key="CheckerBBrush" Color="#E8E8EE" />
+
+    <!-- ===== 圆角（统一 6~8px） ===== -->
+    <CornerRadius x:Key="RadiusControl">6</CornerRadius>
+    <CornerRadius x:Key="RadiusCard">8</CornerRadius>
+
+    <!-- ===== 透明棋盘画刷 ===== -->
+    <DrawingBrush x:Key="CheckerBrush"
+                  TileMode="Tile"
+                  Viewport="0,0,10,10"
+                  ViewportUnits="Absolute">
+        <DrawingBrush.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#DCDCE2">
+                    <GeometryDrawing.Geometry>
+                        <RectangleGeometry Rect="0,0,10,10" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#E8E8EE">
+                    <GeometryDrawing.Geometry>
+                        <RectangleGeometry Rect="0,0,5,5" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#E8E8EE">
+                    <GeometryDrawing.Geometry>
+                        <RectangleGeometry Rect="5,5,5,5" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <!-- ===== 阴影（极浅，保持轻盈不平面） ===== -->
+    <DropShadowEffect x:Key="CardShadow" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.07" Color="#4A4A55" />
+    <DropShadowEffect x:Key="SoftShadow" BlurRadius="18" ShadowDepth="3" Direction="270" Opacity="0.08" Color="#4A4A55" />
+    <DropShadowEffect x:Key="ButtonShadow" BlurRadius="8" ShadowDepth="1" Direction="270" Opacity="0.12" Color="#8A5B66" />
+
+</ResourceDictionary>

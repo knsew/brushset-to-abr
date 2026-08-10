@@ -1,0 +1,39 @@
+<UserControl x:Class="BrushStudio.SearchBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="30">
+    <Border x:Name="Root"
+            CornerRadius="8"
+            Background="{StaticResource CardBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
+            SnapsToDevicePixels="True">
+        <Grid>
+            <TextBox x:Name="Input"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Padding="11,0,26,0"
+                     VerticalContentAlignment="Center"
+                     FontFamily="{StaticResource AppFont}"
+                     FontSize="12"
+                     Foreground="{StaticResource TextBrush}" />
+            <TextBlock x:Name="Placeholder"
+                       Text="搜索笔刷…"
+                       FontSize="12"
+                       Foreground="{StaticResource FaintBrush}"
+                       Margin="12,0,0,0"
+                       VerticalAlignment="Center"
+                       IsHitTestVisible="False" />
+            <TextBlock x:Name="ClearButton"
+                       Text="✕"
+                       FontSize="10"
+                       Width="18" Height="18"
+                       Margin="0,0,6,0"
+                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                       Foreground="{StaticResource MutedBrush}"
+                       Cursor="Hand"
+                       Visibility="Collapsed"
+                       ToolTip="清空搜索" />
+        </Grid>
+    </Border>
+</UserControl>

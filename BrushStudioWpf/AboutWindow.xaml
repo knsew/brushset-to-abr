@@ -1,0 +1,83 @@
+<Window x:Class="BrushStudio.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="关于 Brush Studio"
+        Width="640" Height="560"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{StaticResource BgBrush}"
+        FontFamily="{StaticResource AppFont}"
+        WindowStyle="SingleBorderWindow">
+    <Grid Margin="24,20,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Brush Studio"
+                   FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource TitleFont}"
+                   Foreground="{StaticResource TextStrongBrush}" />
+        <TextBlock x:Name="VersionText"
+                   Grid.Row="1"
+                   FontSize="12" FontWeight="SemiBold"
+                   Foreground="{StaticResource AccentBrush}"
+                   Margin="0,6,0,0" />
+        <TextBlock Text="把 Procreate .brushset 笔刷包转换成 Photoshop .abr 笔刷"
+                   Grid.Row="2"
+                   FontSize="12"
+                   Foreground="{StaticResource MutedBrush}"
+                   Margin="0,4,0,0" />
+
+        <ScrollViewer Grid.Row="3"
+                      VerticalScrollBarVisibility="Auto"
+                      Margin="0,10,0,0"
+                      Padding="0,0,8,0">
+            <StackPanel>
+                <Border Background="{StaticResource AccentSoftBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12,10"
+                        Margin="0,4,0,6">
+                    <StackPanel>
+                        <TextBlock Text="关于作者"
+                                   FontSize="13" FontWeight="SemiBold" FontFamily="{StaticResource TitleFont}"
+                                   Foreground="{StaticResource TextStrongBrush}"
+                                   Margin="0,0,0,6" />
+                        <TextBlock Text="作者：小红书 @此恨绵绵无绝期" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2" />
+                        <TextBlock Text="本软件完全免费，欢迎自由分享与转载，但请勿用于任何商业用途。" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2" />
+                        <TextBlock Text="本项目已开源，GitHub 源码仓库链接见作者小红书主页，欢迎在此基础上二次修改与创作。" FontSize="11.5" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" Margin="0,2,0,2" />
+                        <TextBlock Text="软件仍在持续完善，后续更新将在作者小红书发布，敬请留意。" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="功能" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,10,0,4" />
+                <TextBlock Text="· 只生成一个 .abr 文件，不会产生资料夹" FontSize="11.5" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,2" />
+                <TextBlock Text="· 自动读取笔刷包里的所有笔尖图片" FontSize="11.5" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,2" />
+                <TextBlock Text="· 自动读取每支笔刷的中文名字与原始间距" FontSize="11.5" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,2" />
+                <TextBlock Text="· 支持 ABR 版本、反转 alpha、自动裁剪、压缩" FontSize="11.5" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,2" />
+                <TextBlock Text="· 记住上次输出位置和窗口大小" FontSize="11.5" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,2" />
+
+                <TextBlock Text="快捷键" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,14,0,4" />
+                <TextBlock Text="Ctrl+O 添加笔刷包   ·   Ctrl+S 选择输出" FontSize="11.5" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,2" />
+                <TextBlock Text="Ctrl+Enter 开始转换   ·   Delete 移除   ·   F1 关于" FontSize="11.5" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,2" />
+
+                <TextBlock Text="设置与日志" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,14,0,4" />
+                <TextBlock x:Name="SettingsPathText" FontSize="11.5" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,2" />
+                <TextBlock x:Name="LogPathText" FontSize="11.5" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,2" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Grid.Row="4"
+                Content="知道了"
+                Style="{StaticResource ModernButton.Primary}"
+                HorizontalAlignment="Right"
+                Width="104"
+                Margin="0,10,0,0"
+                Click="OnCloseClicked" />
+    </Grid>
+</Window>
