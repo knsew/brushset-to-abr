@@ -1,4 +1,12 @@
-# Procreate → Photoshop ABR 参数对照表（2026-08-10 全面修订版）
+# Procreate → Photoshop ABR 参数对照表 · Procreate → ABR Parameter Mapping
+
+> **English**: This is the authoritative Procreate→ABR parameter mapping reference — the mapping
+> formulas, real-PS reference values, descriptor item order, and pitfalls. Formulas are implemented
+> in `Mapping.cs`; the writer logic is `BuildBrushPresetItems` in `Core.cs`.
+>
+> **诚实声明 / Honest note**: formulas are at "writeable" level, not "faithful replication" —
+> they prove parameters can be written and imported, but precision is limited by the lack of a large
+> reference dataset and tuning time. Pure-shape brushes replicate best. See `IDEAS.md` / `ATTEMPTS.md`.
 
 > 本表基于：① 真实 ABR v6/v7 文件 Action Descriptor 逆向（`brushPreset` + `sampledBrush`）；
 > ② 用户提供的手工"全参数"笔刷（颜色动态/结构标尺）；

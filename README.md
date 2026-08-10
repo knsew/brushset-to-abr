@@ -106,8 +106,10 @@ Engine files live at repo root; the WPF project `BrushStudioWpf/` references the
 
 ## 📚 文档 · Docs
 
-- [RESEARCH.md](RESEARCH.md)：技术突破点 + 值得继续研究的方向 + 作者技术坦白 + FAQ（中英）· Technical highlights, research roadmap, author's technical notes, FAQ (bilingual).
-- [MAPPING.md](MAPPING.md)：Procreate↔PS 参数对照表（映射公式 + 真实 PS 参考值 + 坑）· Parameter mapping reference (Chinese).
+- [IDEAS.md](IDEAS.md)：**思路**——为什么这么做、对账方法论、自洽≠相似（中英）· The *thinking* behind the approach (bilingual).
+- [ATTEMPTS.md](ATTEMPTS.md)：**尝试过程**——每一步试了什么、成没成、坑在哪（中英）· The *journey* — what was tried, what worked, where the pitfalls are (bilingual).
+- [MAPPING.md](MAPPING.md)：**映射表**——Procreate↔PS 参数对照（公式 + 真实 PS 参考值 + 坑）· Parameter mapping reference.
+- [RESEARCH.md](RESEARCH.md)：技术突破点 + 值得继续研究的方向 + FAQ（中英）· Technical highlights, research roadmap, FAQ (bilingual).
 - [使用教程.md](使用教程.md)：用户教程（中文）· User tutorial (Chinese).
 - [ARCHITECTURE.md](ARCHITECTURE.md)：转换原理与技术架构（中文）· Architecture (Chinese).
 - [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)：参考项目与版权声明 · References & copyright notices.
