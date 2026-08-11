@@ -15,6 +15,7 @@ to future maintainers.
 | 项目 · Project | 用途 · Use | 协议 · License | 说明 · Notes |
 |---|---|---|---|
 | [tohsakrat/Brush-Converter](https://github.com/tohsakrat/Brush-Converter) | "内置材质"理念 · bundled-materials concept | **CC BY-NC-SA 4.0** | 只借鉴概念，未复制其 Python 代码（本项目为 C#）。本仓库因此采用 CC BY-NC-SA 4.0 · Concept only, no code copied; this repo thus uses CC BY-NC-SA 4.0 |
+| [brushset2abr (hhhhuuio/brushhhh)](https://github.com/hhhhuuio/brushhhh) | **VMAL 原图纹理格式**、间距/散射/数量公式、压感曲线、角度 bVTy、混合模式映射（2026-08 采纳）· VMAL texture format, spacing/scatter/count formulas, pressure curves, angle bVTy, blend-mode mapping (adopted 2026-08) | **无 LICENSE**（默认保留所有权利）· no LICENSE (all rights reserved) | 借鉴其**格式与公式事实**（VMAL 结构、sqrt 间距等），全部用 C# 自写实现，未复制代码 · Borrowed format/formula *facts* only, all re-implemented in C# |
 | [prct2sai](https://github.com/Xinyisun-creator/prct2sai) | 智能反相启发式、材质库来源 · smart-inversion heuristic, materials source | **无 LICENSE**（默认保留所有权利）· no LICENSE (all rights reserved) | 只借鉴思路，自行实现 `ShouldAutoInvert`；未使用其代码 · Idea only, self-implemented; no code used |
 | [Spectator (keimbio/Spectator)](https://github.com/keimbio/Spectator) | 笔刷预览/解析参考 · preview/parse reference | **MIT** | 仅本地研究，未并入本项目代码 · Local study only, not merged |
 | [SunnyUI](https://github.com/yhuse/SunnyUI) | 评估过的 UI 库 · evaluated UI library | MIT | **未采用**，仅留档 · **Not used**, archived only |

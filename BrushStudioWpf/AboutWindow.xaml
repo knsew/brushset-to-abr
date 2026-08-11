@@ -48,10 +48,16 @@
                                    FontSize="13" FontWeight="SemiBold" FontFamily="{StaticResource TitleFont}"
                                    Foreground="{StaticResource TextStrongBrush}"
                                    Margin="0,0,0,6" />
-                        <TextBlock Text="作者：小红书 @此恨绵绵无绝期" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2" />
+                        <TextBlock FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2">
+                            <Run Text="作者：小红书 " /><Hyperlink NavigateUri="https://www.xiaohongshu.com/user/profile/6325ecba000000002302721a" RequestNavigate="OnLinkClicked"><Run Text="@此恨绵绵无绝期" /></Hyperlink>
+                        </TextBlock>
                         <TextBlock Text="本软件完全免费，欢迎自由分享与转载，但请勿用于任何商业用途。" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2" />
-                        <TextBlock Text="本项目已开源，GitHub 源码仓库链接见作者小红书主页，欢迎在此基础上二次修改与创作。" FontSize="11.5" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" Margin="0,2,0,2" />
-                        <TextBlock Text="软件仍在持续完善，后续更新将在作者小红书发布，敬请留意。" FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2" />
+                        <TextBlock FontSize="11.5" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" Margin="0,2,0,2">
+                            <Run Text="本项目已开源：" /><Hyperlink NavigateUri="https://github.com/katrinaau97-eng/brushset-to-abr" RequestNavigate="OnLinkClicked"><Run Text="GitHub 源码仓库" /></Hyperlink><Run Text="，欢迎在此基础上二次修改与创作。" />
+                        </TextBlock>
+                        <TextBlock FontSize="11.5" Foreground="{StaticResource TextBrush}" Margin="0,2,0,2">
+                            <Run Text="软件仍在持续完善，后续更新将在作者" /><Hyperlink NavigateUri="https://www.xiaohongshu.com/user/profile/6325ecba000000002302721a" RequestNavigate="OnLinkClicked"><Run Text="小红书" /></Hyperlink><Run Text="发布，敬请留意。" />
+                        </TextBlock>
                     </StackPanel>
                 </Border>
 

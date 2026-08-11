@@ -136,6 +136,8 @@ namespace BrushStudio
         // 匹配到的真实 pattern 名/ID（近似纹理方案）；非空时该笔刷带纹理。
         public string PatternName;
         public string PatternId;
+        // 内嵌 pattern 条目（VMAL 格式原图纹理）；非空时写入 patt 块并引用。
+        public byte[] PatternEntry;
     }
     internal sealed class AbrInput
     {

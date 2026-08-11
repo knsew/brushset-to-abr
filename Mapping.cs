@@ -21,8 +21,14 @@ namespace BrushStudio
         public const int SpacingDefault = 25;
         public const int SpacingMin = 1;
         public const int SpacingMax = 100;
-        public const double SpacingCurveBase = 20.0;
-        public const double SpacingCurvePer = 80.0;
+        // Procreate plotSpacing 存档为 (百分比/100)^2，开方×100 还原（Krita/brushset2abr 的 v7 算法）。
+        // 但裸 sqrt 系统性高估低间距、低估高间距。用户 Procreate 实测锚点（2026-08）：
+        //   厚黑5(0.0330)→10-15%、顺左5硬(0.1266)→29%、蕾丝(0.6987)→~100+（PS 需手动调到100多才符合）。
+        // 拟合曲线：sqrt*100*(0.7+0.7*plotSpacing)，低端压密、高端放稀。
+        public const double SpacingCalBase = 0.7;
+        public const double SpacingCalSlope = 0.7;
+        public const int SpacingConvertMin = 1;
+        public const int SpacingConvertMax = 1000;
 
         public static int SpacingFrom(double plotSpacing)
         {
@@ -30,7 +36,9 @@ namespace BrushStudio
             {
                 return SpacingDefault;
             }
-            return SpacingClamp((int)Math.Round(SpacingCurveBase + plotSpacing * SpacingCurvePer, MidpointRounding.AwayFromZero));
+            double p = Math.Max(0, plotSpacing);
+            double pct = Math.Sqrt(p) * 100.0 * (SpacingCalBase + SpacingCalSlope * p);
+            return (int)Math.Round(Math.Max(SpacingConvertMin, Math.Min(SpacingConvertMax, pct)), MidpointRounding.AwayFromZero);
         }
 
         public static int SpacingClamp(int value)
@@ -128,15 +136,17 @@ namespace BrushStudio
         public const int SizeControlTilt = 3;
         public const int SizeControlNone = 0;
 
-        // sizeMinimum = max(minSizePercent, (1 - pressureSize) * 100)；仅 pressureSize>0 时生效。
-        public static int SizeMinimum(int minSizePercent, double pressureSize)
+        // sizeMinimum = max(minSizePercent, (1 - pressureSize) * 100, curveMin*100)；curveMin 为压感曲线外推。
+        // 2026-08 采纳 brushset2abr 的"压感曲线外推"思路：读 dynamicsPressureSizeCurve，取前两点外推到 x=0。
+        public static int SizeMinimum(int minSizePercent, double pressureSize, double curveMin)
         {
-            if (pressureSize <= 0)
+            int minimum = minSizePercent;
+            if (pressureSize > 0)
             {
-                return minSizePercent;
+                minimum = Math.Max(minimum, (int)Math.Round(Math.Max(0, 1.0 - pressureSize) * 100.0));
             }
-            int pressureRange = (int)Math.Round(Math.Max(0, 1.0 - pressureSize) * 100.0);
-            return Math.Max(minSizePercent, pressureRange);
+            minimum = Math.Max(minimum, (int)Math.Round(curveMin * 100.0));
+            return Math.Max(1, Math.Min(100, minimum));
         }
 
         // ===== 透明度动态 Opacity dynamics（opVr）=====
@@ -144,15 +154,90 @@ namespace BrushStudio
         public const int OpacityControlPressure = 2;
         public const int OpacityControlNone = 0;
 
-        // opacityMinimum = max(minOpacityPercent, (1 - pressureOpacity) * 100)；仅 pressureOpacity>0 时生效。
-        public static int OpacityMinimum(int minOpacityPercent, double pressureOpacity)
+        // opacityMinimum = max(minOpacityPercent, (1 - pressureOpacity) * 100, curveMin*100)。
+        public static int OpacityMinimum(int minOpacityPercent, double pressureOpacity, double curveMin)
         {
-            if (pressureOpacity <= 0)
+            int minimum = minOpacityPercent;
+            if (pressureOpacity > 0)
             {
-                return minOpacityPercent;
+                minimum = Math.Max(minimum, (int)Math.Round(Math.Max(0, 1.0 - pressureOpacity) * 100.0));
             }
-            int opacityRange = (int)Math.Round(Math.Max(0, 1.0 - pressureOpacity) * 100.0);
-            return Math.Max(minOpacityPercent, opacityRange);
+            minimum = Math.Max(minimum, (int)Math.Round(curveMin * 100.0));
+            return Math.Max(1, Math.Min(100, minimum));
+        }
+
+        // ===== 压感曲线外推（brushset2abr 思路，2026-08 采纳）=====
+        // Procreate 压感曲线存为 {"points": {"NS.objects": ["{x,y}", ...]}}，x/y 为 0..1。
+        // 取前两点线性外推到 x=0，得到"零压力时的输出"（0..1），作为最小尺寸/最小不透明度的补充。
+        public static double CurveMin(Dictionary<string, object> paramsDict, string key)
+        {
+            try
+            {
+                object curveObj;
+                if (paramsDict == null || !paramsDict.TryGetValue(key, out curveObj) || !(curveObj is Dictionary<string, object> curve))
+                {
+                    return 0;
+                }
+                object ptsObj;
+                if (!curve.TryGetValue("points", out ptsObj) || !(ptsObj is Dictionary<string, object> pts))
+                {
+                    return 0;
+                }
+                object objsObj;
+                if (!pts.TryGetValue("NS.objects", out objsObj) || !(objsObj is List<object> objs))
+                {
+                    return 0;
+                }
+                double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+                int count = 0;
+                foreach (object item in objs)
+                {
+                    string s = item as string;
+                    if (string.IsNullOrEmpty(s))
+                    {
+                        continue;
+                    }
+                    string[] parts = s.Trim().Trim('{', '}').Split(',');
+                    if (parts.Length != 2)
+                    {
+                        continue;
+                    }
+                    double x, y;
+                    if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out x)) continue;
+                    if (!double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out y)) continue;
+                    if (count == 0)
+                    {
+                        x0 = x; y0 = y;
+                    }
+                    else if (count == 1)
+                    {
+                        x1 = x; y1 = y;
+                    }
+                    count++;
+                    if (count >= 2)
+                    {
+                        break;
+                    }
+                }
+                if (count == 0)
+                {
+                    return 0;
+                }
+                if (count == 1 || x0 <= 0)
+                {
+                    return Math.Max(0, Math.Min(1, y0));
+                }
+                if (x1 <= x0)
+                {
+                    return Math.Max(0, Math.Min(1, y0));
+                }
+                double t = -x0 / (x1 - x0);
+                return Math.Max(0, Math.Min(1, y0 + (y1 - y0) * t));
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         // ===== 圆度动态 Roundness dynamics（roundnessDynamics）=====
@@ -172,6 +257,49 @@ namespace BrushStudio
         public const int AngleDynamicsTiltControl = 3;
         public const int AngleDynamicsDirectionControl = 6;
         public const int AngleDynamicsNone = 0;
+        public const int AngleDynamicsRotationControl = 8; // 旋转（brushset2abr 映射，2026-08 采纳）
+
+        // ===== 角度控制 bVTy 全映射（brushset2abr 思路，2026-08 采纳）=====
+        // Procreate shapeOrientation：2=方位 3=方位+侧旋 4=未知(跟随描边→方向/否则旋转)。
+        // addHalfTurn=true 表示"反向跟随描边"：bVTy=6 且角度加 180° 近似。
+        public static int AngleControl(Dictionary<string, object> paramsDict, double tiltPercent, out bool addHalfTurn)
+        {
+            addHalfTurn = false;
+            if (tiltPercent > 0)
+            {
+                return AngleDynamicsTiltControl; // 倾斜优先 bVTy=3
+            }
+            double rotFollow = ParamMapping.Num(paramsDict, "shapeRotation");
+            int orientation = (int)Math.Round(ParamMapping.Num(paramsDict, "shapeOrientation"));
+            bool hasAzimuth = ParamMapping.Bool(paramsDict, "shapeAzimuth");
+            bool hasRoll = ParamMapping.Bool(paramsDict, "shapeRoll");
+            if (orientation == 2 || orientation == 3)
+            {
+                return AngleDynamicsTiltControl; // 3 钢笔倾斜
+            }
+            if (orientation == 4)
+            {
+                return Math.Abs(rotFollow) >= 0.5 ? AngleDynamicsDirectionControl : AngleDynamicsRotationControl;
+            }
+            if (hasAzimuth)
+            {
+                return AngleDynamicsTiltControl;
+            }
+            if (hasRoll)
+            {
+                return AngleDynamicsRotationControl;
+            }
+            if (rotFollow >= 0.5)
+            {
+                return AngleDynamicsDirectionControl;
+            }
+            if (rotFollow <= -0.5)
+            {
+                addHalfTurn = true;
+                return AngleDynamicsDirectionControl;
+            }
+            return AngleDynamicsNone;
+        }
 
         // ===== 倾斜缩放 tiltScale =====
         // clamp(60, 200, 60 + tiltPercent * 1.4)
@@ -186,31 +314,40 @@ namespace BrushStudio
 
         // ===== 散射 Scatter（scatterDynamics + Cnt）=====
         // 真实 ABR 靶心（FidelityTest/refs/abr-desc.json，PS 默认笔刷）：
-        //   scatterDynamics.jitter = 30 / 122 / 208（观测值），范围上限 450；countDynamics jitter = 0/15/39/100；Cnt = 1/3/5。
-        // 校准（2026-08-10，行为尺子实测）：旧公式 scatter*250+plotJitter*35 把代表散射笔刷推到
-        //   452-501px，超出真实上限；新公式按真实 jitter 30-450 重标定：
-        //   编织勾线(scatter=2.0)→400、散落系列(1.58+1.648)→357、🌈散(plotJitter=8.44)→211、
-        //   斜方2(0.799)→160、Snow Gum(0.25)→50、微散射(0.013)→3。
-        // shapeScatter 与 plotJitter 是两条独立散射轴，Procreate 不同包用不同参数表达同一效果，
-        // 两条都计入幅度（系数比 ~8:1，与 Procreate 原始量纲近似）。
-        public const double ScatterJitterScatterCoef = 200.0;
-        public const double ScatterJitterPlotCoef = 25.0;
-        public const double ScatterJitterMax = 450.0;
-        public const double ScatterCountBase = 1.0;
-        public const double ScatterCountPer = 5.0;
-        public const double ScatterCountMax = 5.0;
+        // ===== 散射/数量（brushset2abr 语义还原，2026-08 全面采纳）=====
+        // shapeScatter（旋转散布）→ 角度抖动；plotJitter（横向/纵向位置散）→ 散射抖动。
+        // Procreate 存档：shapeScatter = 0.5*(pct/100)^2；plotJitter = 3*(pct/100)^2（滑杆 0-200%）。
+        // 旧做法把两条轴合并成一个散射信号（scatter*200+plotJitter*25），语义不忠实，已废弃。
+        public const double ScatterAngleMax = 200.0;
+        public const double ScatterJitterMax = 200.0;
 
-        // scatterJitter = clamp(0, 450, scatter*200 + plotJitter*25)
-        public static int ScatterJitter(double scatter, double plotJitter)
+        public static int AngleJitter(double shapeScatter)
         {
-            return (int)Math.Round(Math.Max(0, Math.Min(ScatterJitterMax, scatter * ScatterJitterScatterCoef + plotJitter * ScatterJitterPlotCoef)));
+            double pct = Math.Sqrt(Math.Max(0, shapeScatter) / 0.5) * 100.0;
+            return (int)Math.Round(Math.Max(0, Math.Min(ScatterAngleMax, pct)));
         }
 
-        // scatterCount = clamp(1, 5, 1 + round(shapeCount*5))
-        // shapeCount 分布 0.0625~0.8718 → Cnt 1~5，与真实 ABR Cnt=1/3/5 同量纲（同包内 count 是"每站盖章数"）。
-        public static double ScatterCount(double shapeCount)
+        public static int ScatterJitter(double plotJitter, double plotJitterLongitudinal)
         {
-            return Math.Max(ScatterCountBase, Math.Min(ScatterCountMax, ScatterCountBase + Math.Round(shapeCount * ScatterCountPer)));
+            double a = Math.Sqrt(Math.Max(0, plotJitter) / 3.0) * 100.0;
+            double b = Math.Sqrt(Math.Max(0, plotJitterLongitudinal) / 3.0) * 100.0;
+            return (int)Math.Round(Math.Max(0, Math.Min(ScatterJitterMax, Math.Max(a, b))));
+        }
+
+        // shapeCount 存档 0.0625~1.0 = 个数/16。
+        public const int CountMin = 1;
+        public const int CountMax = 16;
+
+        public static int Count(double shapeCount)
+        {
+            return (int)Math.Round(Math.Max(CountMin, Math.Min(CountMax, shapeCount * 16.0)));
+        }
+
+        // shapeCountJitter 存档为平方。
+        public static int CountJitter(double shapeCountJitter)
+        {
+            double pct = Math.Sqrt(Math.Max(0, shapeCountJitter)) * 100.0;
+            return (int)Math.Round(Math.Max(0, Math.Min(100, pct)));
         }
 
         // ===== 湿边 Wet Edge（MixB toolOptions）=====
@@ -267,12 +404,11 @@ namespace BrushStudio
             return Math.Max(12, Math.Min(100, (int)Math.Round(grainDepth * 100.0)));
         }
 
-        // textureBrightness 0-1 → ABR textureBrightness；0 为中性。
-        // 校准（2026-08-10 真实 PS 样本）：Towel=+30 亮、Kyle 真实油画=-33、油画Flex=-36、墨水盒=-150，
-        //   负亮度在 hght 混合下只要 depth 足够（>=12）就安全。去掉旧的 +30 强制下限（那是低 depth 才需要的 hack）。
+        // textureBrightness 0-1 → ABR textureBrightness；0 为中性，负值=暗纹理（真实 PS：Towel=+30、油画=-33/-36、墨水盒=-150）。
+        // 校准（2026-08）：负亮度在 hght 混合 + depth>=12 下安全。曾错误地把负数钳成 0，导致暗纹理不显示（2026-08 修复）。
         public static int TextureBrightness(double brightness)
         {
-            if (double.IsNaN(brightness) || brightness <= 0)
+            if (double.IsNaN(brightness) || double.IsInfinity(brightness))
             {
                 return 0;
             }
@@ -280,14 +416,33 @@ namespace BrushStudio
         }
 
         // textureContrast 0-1 → ABR textureContrast；默认 -10（真实 KYLE 终极上墨的实测值）。
-        // 校准（2026-08-10）：真实 PS 范围 -10~90（上墨=-10、油画=57、墨水盒=90），放宽上限。
+        // 校准（2026-08-10）：真实 PS 范围 -10~90（上墨=-10、油画=57、墨水盒=90）。负对比度保留（曾钳成 -10）。
         public static int TextureContrast(double contrast)
         {
-            if (double.IsNaN(contrast) || contrast <= 0)
+            if (double.IsNaN(contrast) || double.IsInfinity(contrast))
             {
                 return -10;
             }
             return Math.Max(-50, Math.Min(100, (int)Math.Round(contrast * 100.0)));
+        }
+
+        // ===== 纹理混合模式（grainBlendMode → ABR BlnM）=====
+        // 数字→枚举对照来源：brushset2abr（其注释标注依据 Krita Procreate 导入脚本作者整理），
+        // 2026-08 采纳。未知值回退 Mltp（Multiply），与原工具一致。
+        private static readonly Dictionary<int, string> GrainBlendToAbrMap = new Dictionary<int, string>
+        {
+            {0, "Nrml"}, {1, "Mltp"}, {2, "Scrn"}, {3, "linearDodge"}, {4, "Lghn"}, {5, "Xclu"},
+            {6, "Dfrn"}, {7, "blendSubtraction"}, {8, "linearBurn"}, {9, "CDdg"}, {10, "CBrn"},
+            {11, "Ovrl"}, {12, "HrdL"}, {13, "Lmns"}, {14, "Clr "}, {15, "H   "}, {16, "Strt"},
+            {17, "SftL"}, {19, "Drkn"}, {20, "hardMix"}, {21, "vividLight"}, {22, "linearLight"},
+            {23, "pinLight"}, {24, "lighterColor"}, {25, "darkerColor"}, {26, "blendDivide"},
+            {27, "Hght"}, {28, "linearHeight"},
+        };
+
+        public static string GrainBlendAbr(double grainBlendMode)
+        {
+            int mode = (int)Math.Round(grainBlendMode);
+            return GrainBlendToAbrMap.TryGetValue(mode, out string value) ? value : "Mltp";
         }
     }
 }

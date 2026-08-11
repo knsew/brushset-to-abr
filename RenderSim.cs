@@ -164,11 +164,11 @@ namespace BrushStudio
                 // 静态不透明度：paintOpacity（笔刷整体不透明度）优先，否则静态 minOpacity
                 sp.OpacityMin = paintOpacity > 0 ? Math.Max(0, Math.Min(1, paintOpacity)) : minOpacity;
             }
-            double scatter = ParamMapping.Num(p, "shapeScatter");
             double plotJitter = ParamMapping.Num(p, "plotJitter");
+            double plotJitterLong = ParamMapping.Num(p, "plotJitterLongitudinal");
             double shapeCount = ParamMapping.Num(p, "shapeCount");
-            sp.ScatterPx = Mapping.ScatterJitter(scatter, plotJitter);
-            sp.Count = Mapping.ScatterCount(shapeCount);
+            sp.ScatterPx = Mapping.ScatterJitter(plotJitter, plotJitterLong);
+            sp.Count = Mapping.Count(shapeCount);
             return sp;
         }
 

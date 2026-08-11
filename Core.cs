@@ -371,14 +371,15 @@ namespace BrushStudio
             }
             double scatter = Num(p, "shapeScatter");
             double plotJitter = Num(p, "plotJitter");
-            if (scatter > 0 || plotJitter > 0)
+            double plotJitterLong = Num(p, "plotJitterLongitudinal");
+            if (scatter > 0 || plotJitter > 0 || plotJitterLong > 0)
             {
-                lines.Add("散射  " + Mapping.ScatterJitter(scatter, plotJitter).ToString("0.#", CultureInfo.InvariantCulture) + "px");
+                lines.Add("散射  " + Mapping.ScatterJitter(plotJitter, plotJitterLong).ToString("0.#", CultureInfo.InvariantCulture) + "% / 角度抖动 " + Mapping.AngleJitter(scatter).ToString("0.#", CultureInfo.InvariantCulture) + "%");
             }
             double shapeCount = Num(p, "shapeCount");
             if (shapeCount > 0)
             {
-                lines.Add("数量  ×" + Mapping.ScatterCount(shapeCount).ToString("0.#", CultureInfo.InvariantCulture));
+                lines.Add("数量  ×" + Mapping.Count(shapeCount).ToString("0.#", CultureInfo.InvariantCulture));
             }
             double pressureSize = Num(p, "dynamicsPressureSize");
             double pressureOpacity = Num(p, "dynamicsPressureOpacity");
@@ -3161,17 +3162,20 @@ namespace BrushStudio
                 brush.Name = name;
                 if (!string.IsNullOrEmpty(brush.GrainPath))
                 {
-                    // 近似纹理：把 Grain 匹配到最近似的真实 pattern，按真实名/ID 引用（尾部合法，PS 能导入）。
+                    // 原图纹理：把 Grain 图以 VMAL 格式内嵌为自定义 pattern（2026-08 实测 PS 接受并渲染，
+                    // 参考 brushset2abr 的 build_patt_item 结构）。pattern 名用 $null（与 brushset2abr 一致，
+                    // PS 能解析；自定义名曾被实测渲染为实心）。
                     try
                     {
-                        float[] feature = PatternLibrary.ComputeGrainFeature(brush.GrainPath);
-                        brush.PatternName = PatternLibrary.MatchName(feature);
-                        brush.PatternId = PatternLibrary.GetId(brush.PatternName);
+                        brush.PatternName = "$null";
+                        brush.PatternId = Guid.NewGuid().ToString();
+                        brush.PatternEntry = BuildVmAlPatternEntryFromFile(brush.GrainPath, brush.PatternName, brush.PatternId);
                     }
                     catch
                     {
                         brush.PatternName = null;
                         brush.PatternId = null;
+                        brush.PatternEntry = null;
                         brush.GrainPath = null;
                     }
                 }
@@ -3423,6 +3427,50 @@ namespace BrushStudio
                     {
                         bmp.UnlockBits(data);
                     }
+
+                    // 1) 带透明通道：alpha 即形状，无需反色（brushset2abr 分档，2026-08 采纳）。
+                    bool hasAlpha = false;
+                    long[] hist = new long[256];
+                    long sum = 0;
+                    long count = 0;
+                    for (int y = 0; y < bmp.Height; y++)
+                    {
+                        for (int x = 0; x < bmp.Width; x++)
+                        {
+                            int pixel = y * stride + x * 4;
+                            if (pixels[pixel + 3] < 200)
+                            {
+                                hasAlpha = true;
+                            }
+                            int gray = (pixels[pixel + 2] + pixels[pixel + 1] + pixels[pixel]) / 3;
+                            hist[gray]++;
+                            sum += gray;
+                            count++;
+                        }
+                    }
+                    if (hasAlpha)
+                    {
+                        return false;
+                    }
+                    if (count == 0)
+                    {
+                        return false;
+                    }
+
+                    // 2) 近纯色（标准差<6）：偏暗→反成纯白，偏亮保持。
+                    double mean = (double)sum / count;
+                    double variance = 0;
+                    for (int i = 0; i < 256; i++)
+                    {
+                        variance += hist[i] * (i - mean) * (i - mean);
+                    }
+                    variance /= count;
+                    if (Math.Sqrt(variance) < 6)
+                    {
+                        return mean < 128;
+                    }
+
+                    // 3) 有图案：看边缘，边缘白→黑形白底→反色；边缘黑→白形黑底→保持。
                     int border = Math.Max(2, Math.Min(bmp.Width, bmp.Height) / 10);
                     int white = 0;
                     int total = 0;
@@ -3592,6 +3640,122 @@ namespace BrushStudio
             return output.ToArray();
         }
 
+        /// <summary>
+        /// 原图纹理：把 Grain 图以 VMAL 格式构建成内嵌 pattern 条目（2026-08 实测 PS 接受并渲染，
+        /// 参考 brushset2abr 的 build_patt_item 结构）。缩到最长边 ≤512 控制体积。
+        /// </summary>
+        private static byte[] BuildVmAlPatternEntryFromFile(string grainPath, string name, string id)
+        {
+            using (Bitmap src = new Bitmap(grainPath))
+            {
+                Bitmap rgb = (src.PixelFormat == PixelFormat.Format24bppRgb && src.Width <= 512 && src.Height <= 512)
+                    ? new Bitmap(src)
+                    : DownscaleRgb(src, 512);
+                try
+                {
+                    return BuildVmAlPatternEntry(rgb, name, id);
+                }
+                finally
+                {
+                    rgb.Dispose();
+                }
+            }
+        }
+
+        private static Bitmap DownscaleRgb(Bitmap src, int maxSide)
+        {
+            double scale = Math.Min(1.0, (double)maxSide / Math.Max(src.Width, src.Height));
+            int nw = Math.Max(1, (int)(src.Width * scale));
+            int nh = Math.Max(1, (int)(src.Height * scale));
+            Bitmap outBmp = new Bitmap(nw, nh, PixelFormat.Format24bppRgb);
+            using (Graphics g = Graphics.FromImage(outBmp))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(src, 0, 0, nw, nh);
+            }
+            return outBmp;
+        }
+
+        private static byte[] BuildVmAlPatternEntry(Bitmap rgb, string name, string id)
+        {
+            int w = rgb.Width, h = rgb.Height;
+            byte[][] channels = new byte[3][];
+            for (int c = 0; c < 3; c++)
+            {
+                channels[c] = new byte[w * h];
+            }
+            BitmapData bd = rgb.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            try
+            {
+                int stride = bd.Stride;
+                byte[] row = new byte[stride];
+                for (int y = 0; y < h; y++)
+                {
+                    Marshal.Copy(bd.Scan0 + y * stride, row, 0, stride);
+                    for (int x = 0; x < w; x++)
+                    {
+                        int idx = y * w + x;
+                        channels[0][idx] = row[x * 3 + 2]; // R
+                        channels[1][idx] = row[x * 3 + 1]; // G
+                        channels[2][idx] = row[x * 3];     // B
+                    }
+                }
+            }
+            finally
+            {
+                rgb.UnlockBits(bd);
+            }
+
+            using (MemoryStream vmal = new MemoryStream())
+            {
+                WriteInt32(vmal, 0); // top
+                WriteInt32(vmal, 0); // left
+                WriteInt32(vmal, h); // bottom
+                WriteInt32(vmal, w); // right
+                WriteInt32(vmal, 24); // depth
+                for (int c = 0; c < 26; c++)
+                {
+                    if (c < 3)
+                    {
+                        byte[] data = channels[c];
+                        WriteInt32(vmal, 1);
+                        WriteInt32(vmal, data.Length + 23);
+                        WriteInt32(vmal, 8);
+                        WriteInt32(vmal, 0);
+                        WriteInt32(vmal, 0);
+                        WriteInt32(vmal, h);
+                        WriteInt32(vmal, w);
+                        WriteInt16(vmal, 8);
+                        vmal.WriteByte(0);
+                        vmal.Write(data, 0, data.Length);
+                    }
+                    else
+                    {
+                        WriteInt32(vmal, 0);
+                    }
+                }
+                byte[] vmalBody = vmal.ToArray();
+
+                using (MemoryStream body = new MemoryStream())
+                {
+                    WriteInt32(body, 1); // pattern version
+                    WriteInt32(body, 3); // RGB
+                    WriteInt16(body, 0);
+                    WriteInt16(body, 0);
+                    byte[] nb = Encoding.BigEndianUnicode.GetBytes(name);
+                    WriteInt32(body, nb.Length / 2 + 1);
+                    body.Write(nb, 0, nb.Length);
+                    WriteInt16(body, 0); // name NUL
+                    body.WriteByte((byte)id.Length);
+                    body.Write(Encoding.ASCII.GetBytes(id), 0, id.Length);
+                    WriteInt32(body, 3); // VMAL version
+                    WriteInt32(body, vmalBody.Length);
+                    body.Write(vmalBody, 0, vmalBody.Length);
+                    return body.ToArray();
+                }
+            }
+        }
+
         private static void WriteAbrV6Plus(Stream stream, List<AbrBrush> brushes, int version, bool useRle)
         {
             WriteInt16(stream, (short)version);
@@ -3609,21 +3773,23 @@ namespace BrushStudio
 
             using (MemoryStream patt = new MemoryStream())
             {
-                // 近似纹理：每个被引用的真实 pattern 只内嵌一次（去重），按真实名字/ID 引用。
+                // 原图纹理：每个引用的 pattern 条目（VMAL）内嵌一次（按条目字节去重——同名 $null 的
+                // 不同 grain 靠独立 ID 区分），按名字/ID 引用。
                 HashSet<string> embedded = new HashSet<string>(StringComparer.Ordinal);
                 foreach (AbrBrush brush in brushes)
                 {
-                    if (string.IsNullOrEmpty(brush.PatternName) || !embedded.Add(brush.PatternName))
+                    if (string.IsNullOrEmpty(brush.PatternName) || brush.PatternEntry == null)
                     {
                         continue;
                     }
-                    byte[] entry = PatternLibrary.GetEntry(brush.PatternName);
-                    if (entry == null)
+                    // 去重键用条目字节的哈希（所有 pattern 名都是 $null，不能按名去重）。
+                    string key = Convert.ToBase64String(brush.PatternEntry);
+                    if (!embedded.Add(key))
                     {
                         continue;
                     }
-                    WriteInt32(patt, entry.Length);
-                    patt.Write(entry, 0, entry.Length);
+                    WriteInt32(patt, brush.PatternEntry.Length);
+                    patt.Write(brush.PatternEntry, 0, brush.PatternEntry.Length);
                     // pattern 条目间按 4 字节对齐（与真实 patt 块一致）。
                     while ((patt.Length % 4) != 0)
                     {
@@ -3641,11 +3807,10 @@ namespace BrushStudio
             }
         }
 
-        // ===== 纹理写入（近似方案）=====
-        // 已完整逆向 pattern 条目格式（u32 version=1/mode=3(RGB)/u16 h/w/u32(字符数+1)+UTF-16BE name+0x0000/
-        // pascal id/60字节常量区/planar RGB/153字节尾），但自定义 pattern 会被 PS 因"尾部校验和"拒收（2026-08-10 实测）。
-        // 现采用近似方案：每支带可见纹理的笔刷匹配 PatternLibrary 中最近似的真实 pattern（尾部合法），
-        // 按真实名字/ID 引用并内嵌其条目（见 PatternLibrary.cs / PatternData.cs）。
+        // ===== 纹理写入（原图纹理，2026-08 采纳 brushset2abr 的 VMAL 格式）=====
+        // Procreate 原 Grain 图以 VMAL 格式内嵌为自定义 pattern 条目（无尾部校验，PS 接受并渲染），
+        // 由 BuildVmAlPatternEntryFromFile 生成，替换旧的"匹配真实 pattern 近似"方案。
+        // 自定义名/ID 仅作引用键，PS 不校验（2026-08 实测）。
 
         private static void Write8Bim(Stream stream, string key, byte[] data)
         {
@@ -3779,6 +3944,14 @@ namespace BrushStudio
                     count++;
                 };
 
+                // 反向跟随描边（shapeRotation<=-0.5 且无倾斜）：方向动态 bVTy=6，角度加 180° 近似
+                // （brushset2abr 思路，2026-08 采纳；须在 Brsh 写入前调整 brush.Angle）。
+                if (ParamMapping.Num(brush.Params, "shapeRotation") <= -0.5 &&
+                    ParamMapping.Num(brush.Params, "dynamicsTiltAngle") <= Mapping.TiltZeroThreshold)
+                {
+                    brush.Angle += 180;
+                }
+
                 add(delegate(MemoryStream s)
                 {
                     WriteKey(s, "Nm  ");
@@ -3804,6 +3977,7 @@ namespace BrushStudio
                 double shapeCount = ParamMapping.Num(brush.Params, "shapeCount");
                 double shapeCountJitter = ParamMapping.Num(brush.Params, "shapeCountJitter");
                 double plotJitter = ParamMapping.Num(brush.Params, "plotJitter");
+                double plotJitterLongitudinal = ParamMapping.Num(brush.Params, "plotJitterLongitudinal");
                 double wet = ParamMapping.Num(brush.Params, "wetEdgesAmount");
                 double roundness = ParamMapping.Num(brush.Params, "shapeRoundness");
                 double pressureRoundnessMin = ParamMapping.Num(brush.Params, "dynamicsPressureShapeRoundnessMinimum");
@@ -3827,8 +4001,7 @@ namespace BrushStudio
                 int hueJitterPercent = Mapping.PercentFrom01(hueJitter);
                 int satJitterPercent = Mapping.PercentFrom01(satJitter);
                 int brtJitterPercent = Mapping.PercentFrom01(maxBrightness);
-                int colorJitterPercent = pressureSecondary > 0 ? 100 : 0;
-                bool perStroke = strokeHueJitter > 0 || strokeSatJitter > 0 || strokeLightJitter > 0 || strokeDarkJitter > 0;
+                int colorJitterPercent = (int)Math.Round(Math.Max(0, Math.Min(1, pressureSecondary)) * 100.0);
                 bool useColorDynamics = hueJitterPercent > 0 || satJitterPercent > 0 || brtJitterPercent > 0 || colorJitterPercent > 0;
 
                 // 纹理：仅匹配到真实 pattern 的笔刷写入（近似方案；无图/grainDepth=0 不加）。
@@ -3837,19 +4010,21 @@ namespace BrushStudio
                 int tiltPercent = Mapping.TiltPercent(tilt);
                 int jitterSizePercent = Mapping.PercentFrom01(jitterSize);
                 int jitterOpacityPercent = Mapping.PercentFrom01(jitterOpacity);
-                int countJitterPercent = Mapping.PercentFrom01(shapeCountJitter);
+                int countJitterPercent = Mapping.CountJitter(shapeCountJitter);
                 int minSizePercent = Mapping.PercentFrom01(minSize);
                 int minOpacityPercent = Mapping.PercentFrom01(minOpacity);
 
                 bool sizePressure = pressureSize > 0;
                 bool sizeTilt = !sizePressure && tiltPercent > 0 && ParamMapping.Num(brush.Params, "dynamicsTiltSize") > 0;
                 int sizeControl = sizePressure ? Mapping.SizeControlPressure : (sizeTilt ? Mapping.SizeControlTilt : Mapping.SizeControlNone);
-                int sizeMinimum = Mapping.SizeMinimum(minSizePercent, pressureSize);
+                double sizeCurveMin = Mapping.CurveMin(brush.Params, "dynamicsPressureSizeCurve");
+                int sizeMinimum = Mapping.SizeMinimum(minSizePercent, pressureSize, sizeCurveMin);
                 int sizeJitter = sizePressure || jitterSizePercent > 0 ? jitterSizePercent : 0;
 
                 bool opacityPressure = pressureOpacity > 0;
                 int opacityControl = opacityPressure ? Mapping.OpacityControlPressure : Mapping.OpacityControlNone;
-                int opacityMinimum = Mapping.OpacityMinimum(minOpacityPercent, pressureOpacity);
+                double opacityCurveMin = Mapping.CurveMin(brush.Params, "dynamicsPressureOpacityCurve");
+                int opacityMinimum = Mapping.OpacityMinimum(minOpacityPercent, pressureOpacity, opacityCurveMin);
                 int opacityJitter = opacityPressure || jitterOpacityPercent > 0 ? jitterOpacityPercent : 0;
 
                 int roundnessControl = 0;
@@ -3861,17 +4036,32 @@ namespace BrushStudio
                 }
 
                 bool useTip = tiltPercent > 0 || pressureSize > 0 || jitterSizePercent > 0 || minSizePercent > 0;
-                bool useScatter = scatter > 0 || shapeCount > 0;
+                bool useScatter = scatter > 0 || shapeCount > 0 || plotJitter > 0 || plotJitterLongitudinal > 0;
                 bool usePaint = jitterOpacityPercent > 0 || pressureOpacity > 0 || minOpacityPercent > 0;
                 bool wetEdge = wet > 0;
-                // 静态半透明：paintOpacity 驱动 ABR flow（真实 PS 用 flow 表达静态不透明度）
-                double staticOpacity = paintOpacity > 0 ? paintOpacity
-                    : (pressureOpacity <= 0 && minOpacity > 0 ? minOpacity : 0);
-                int flow = Mapping.FlowFrom(staticOpacity);
-                bool needStaticFlow = !wetEdge && pressureOpacity <= 0 && flow < Mapping.FlowMax;
+                // 不透明度/流量语义（brushset2abr，2026-08）：paintOpacity → PbTl Opct；
+                // dynamicsGlazedFlow → PbTl flow + prVr 最小流量。
+                double glazedFlow = ParamMapping.Num(brush.Params, "dynamicsGlazedFlow");
+                if (glazedFlow <= 0)
+                {
+                    glazedFlow = 1.0;
+                }
+                int opacityPercent = paintOpacity > 0 ? (int)Math.Round(Math.Max(0, Math.Min(1, paintOpacity)) * 100.0) : 100;
+                int flowPct = (int)Math.Round(Math.Max(0, Math.Min(1, glazedFlow)) * 100.0);
+                bool needPbTl = !wetEdge && (opacityPercent < 100 || flowPct < 100);
+                int flowControl = (flowPct < 100 && (sizePressure || opacityPressure))
+                    ? Mapping.OpacityControlPressure : Mapping.DynamicsNone;
                 int tiltScale = Mapping.TiltScale(tiltPercent);
-                int scatterJitter = Mapping.ScatterJitter(scatter, plotJitter);
-                double scatterCount = Mapping.ScatterCount(shapeCount);
+                // 散射语义分离（brushset2abr，2026-08）：shapeScatter（旋转散）→ 角度抖动；
+                // plotJitter（横向/纵向位置散）→ 散射抖动；shapeRandomise 时角度抖动 +25。
+                int scatterJitter = Mapping.ScatterJitter(plotJitter, plotJitterLongitudinal);
+                int angleJitter = Mapping.AngleJitter(scatter);
+                if (ParamMapping.Bool(brush.Params, "shapeRandomise"))
+                {
+                    angleJitter = Math.Min(100, angleJitter + 25);
+                }
+                double scatterCount = Mapping.Count(shapeCount);
+                bool bothAxes = plotJitterLongitudinal > 0.05;
 
                 // 纯笔刷模式：只导图案/间距/大小，不映射任何其他参数（角度/圆度/动态/纹理/湿边/颜色/flow 全关）。
                 if (AppSettings.Pure)
@@ -3882,7 +4072,7 @@ namespace BrushStudio
                     wetEdge = false;
                     hasTexture = false;
                     useColorDynamics = false;
-                    needStaticFlow = false;
+                    needPbTl = false;
                     brush.Angle = 0;
                     brush.Roundness = 100;
                 }
@@ -3921,15 +4111,12 @@ namespace BrushStudio
                     {
                         WriteBrVr(s, "szVr", sizeControl, Mapping.DynamicsSteps, sizeJitter, sizeMinimum);
                     });
-                    // 角度动态：倾斜→bVTy=3；无倾斜但 shapeOrientation>=2（方向跟随型）→bVTy=6 初始方向
-                    int angleControl = tiltPercent > 0
-                        ? Mapping.AngleDynamicsTiltControl
-                        : (ParamMapping.Num(brush.Params, "shapeOrientation") >= 2
-                            ? Mapping.AngleDynamicsDirectionControl
-                            : Mapping.AngleDynamicsNone);
+                    // 角度动态：完整输入样式映射（倾斜→3，方位/侧旋→3，跟随→6，旋转→8，反向跟随→6+180°）。
+                    bool angleHalfTurn;
+                    int angleControl = Mapping.AngleControl(brush.Params, tiltPercent, out angleHalfTurn);
                     add(delegate(MemoryStream s)
                     {
-                        WriteBrVr(s, "angleDynamics", angleControl, Mapping.DynamicsSteps, tiltPercent, 0);
+                        WriteBrVr(s, "angleDynamics", angleControl, Mapping.DynamicsSteps, angleJitter, 0);
                     });
                     add(delegate(MemoryStream s)
                     {
@@ -3953,7 +4140,7 @@ namespace BrushStudio
                     });
                     add(delegate(MemoryStream s)
                     {
-                        WriteBoolKey(s, "bothAxes", true);
+                        WriteBoolKey(s, "bothAxes", bothAxes);
                     });
                     add(delegate(MemoryStream s)
                     {
@@ -3986,6 +4173,7 @@ namespace BrushStudio
                     bool texInverted = ParamMapping.Bool(brush.Params, "textureInverted");
                     string patternName = brush.PatternName;
                     string patternId = brush.PatternId;
+                    string grainBlend = Mapping.GrainBlendAbr(ParamMapping.Num(brush.Params, "grainBlendMode")); // 纹理可见；Hght 实测变实色透明，弃用
                     add(delegate(MemoryStream s)
                     {
                         WriteBoolKey(s, "TxtC", true);
@@ -3996,7 +4184,7 @@ namespace BrushStudio
                     });
                     add(delegate(MemoryStream s)
                     {
-                        WriteEnum(s, "textureBlendMode", "BlnM", "Hght");
+                        WriteEnum(s, "textureBlendMode", "BlnM", grainBlend);
                     });
                     add(delegate(MemoryStream s)
                     {
@@ -4044,7 +4232,7 @@ namespace BrushStudio
                     // 真实 PS 油漆动态顺序：prVr(流量) → opVr(透明度) → wtVr(湿度) → mxVr(混合)
                     add(delegate(MemoryStream s)
                     {
-                        WriteBrVr(s, "prVr", pressureOpacity > 0 ? Mapping.OpacityControlPressure : Mapping.DynamicsNone, Mapping.DynamicsSteps, 0, opacityMinimum);
+                        WriteBrVr(s, "prVr", flowControl, Mapping.DynamicsSteps, 0, flowPct);
                     });
                     add(delegate(MemoryStream s)
                     {
@@ -4089,7 +4277,9 @@ namespace BrushStudio
                     });
                     add(delegate(MemoryStream s)
                     {
-                        WriteBoolKey(s, "colorDynamicsPerTip", perStroke);
+                        // 真实 PS 双色笔刷 colorDynamicsPerTip=true（应用到每个笔尖）；false 会把颜色动态
+                        // 锁定成整笔一个颜色，压力副色就切不动。2026-08 修正。
+                        WriteBoolKey(s, "colorDynamicsPerTip", true);
                     });
                 }
                 add(delegate(MemoryStream s)
@@ -4119,11 +4309,11 @@ namespace BrushStudio
                         WriteToolOptionsMixB(s, sizeJitter);
                     });
                 }
-                else if (needStaticFlow)
+                else if (needPbTl)
                 {
                     add(delegate(MemoryStream s)
                     {
-                        WriteToolOptionsPbTl(s, flow);
+                        WriteToolOptionsPbTl(s, flowPct, opacityPercent);
                     });
                 }
 
@@ -4207,7 +4397,7 @@ namespace BrushStudio
             WriteBoolKey(stream, "brushPreset", true);
         }
 
-        private static void WriteToolOptionsPbTl(Stream stream, double flowValue)
+        private static void WriteToolOptionsPbTl(Stream stream, double flowValue, int opacityPercent)
         {
             WriteKey(stream, "toolOptions");
             WriteTag(stream, "Objc");
@@ -4218,7 +4408,7 @@ namespace BrushStudio
             WriteLong(stream, "flow", (long)flowValue);
             WriteLong(stream, "Smoo", 0);
             WriteEnum(stream, "Md  ", "BlnM", "Nrml");
-            WriteLong(stream, "Opct", 100);
+            WriteLong(stream, "Opct", opacityPercent);
             WriteBoolKey(stream, "smoothing", true);
             WriteLong(stream, "smoothingValue", 0);
             WriteBoolKey(stream, "smoothingRadiusMode", false);
