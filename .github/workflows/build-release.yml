@@ -1,0 +1,47 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Publish self-contained single-file exe
+        run: dotnet publish BrushStudioWpf/BrushStudioWpf.csproj -c Release -o dist
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $name = "PNGtoABR-${{ github.ref_name }}-win-x64"
+          Compress-Archive -Path dist/PNGtoABR.exe -DestinationPath "$name.zip"
+          Get-ChildItem dist, "$name.zip" | Select-Object Name, Length
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PNGtoABR-${{ github.ref_name }}-win-x64
+          path: |
+            dist/PNGtoABR.exe
+            *.zip
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PNGtoABR ${{ github.ref_name }}
+          files: |
+            dist/PNGtoABR.exe
+            *.zip
